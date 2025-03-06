@@ -228,7 +228,7 @@ class DB:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO gists 
-                (id, title, category, tags, summary, create_date, modified_date, published_date)
+                (id, description, category, tags, summary, create_date, modified_date, published_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 gist_data['id'],
@@ -247,7 +247,7 @@ class DB:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT id, description, create_date, modified_date, published_date FROM gists WHERE id = ?", (gist_id,))
+            cursor.execute("SELECT id, description, category, tags, summary, create_date, modified_date, published_date FROM gists WHERE id = ?", (gist_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
 
@@ -255,7 +255,7 @@ class DB:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            sql = "SELECT id, description, create_date, modified_date, published_date FROM gists"
+            sql = "SELECT id, description, category, tags, summary, create_date, modified_date, published_date FROM gists ORDER BY modified_date DESC"
             cursor.execute(sql)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]

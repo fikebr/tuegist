@@ -12,6 +12,9 @@
 .gist-item {
     margin-bottom: 8px;
     font-size: 10pt;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
 }
 .title {
     color: #000;
@@ -24,6 +27,7 @@
 .meta {
     color: #828282;
     font-size: 7pt;
+    white-space: nowrap;
 }
 .meta a {
     color: #828282;
@@ -31,6 +35,21 @@
 }
 .score {
     color: #828282;
+}
+
+.date-col {
+    width: 100px;
+}
+.category-col {
+    width: 100px;
+    font-size: 10pt;
+    font-weight: bold;
+}
+.title-col {
+    flex: 1;
+}
+.tags-col {
+    width: 150px;
 }
 
 {% endblock %}
@@ -42,9 +61,10 @@
 <ol class="gist-list">
     {% for gist in gists %}
     <li class="gist-item">
-        <span class="meta">{{ gist.modified_date }}</span> | 
-        <a href="{{ cfg.url_base }}/gists/{{ gist.id }}.html" class="title">{{ gist.description }}</a>
-
+        <span class="meta date-col">{{ gist.modified_date }}</span>
+        <span class="meta category-col">{{ gist.category }}</span>
+        <a href="{{ cfg.url_base }}/gists/{{ gist.id }}.html" class="title title-col">{{ gist.description }}</a>
+        <span class="meta tags-col">{{ gist.tags }}</span>
     </li>
     {% endfor %}
 </ol>
