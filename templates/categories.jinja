@@ -58,8 +58,21 @@
 
 {% block content %}
 
+<h1>Categories</h1>
+
+<ol class="category-list">
+    {% for category in category_list %}
+    <li class="category-item">
+        <a href="#{{ category }}">{{ category }}: {{ category_count[category] }}</a>
+    </li>
+    {% endfor %}
+</ol>
+
+{% for category in category_list %}
+<h2 id="{{ category }}">{{ category }}: {{ category_count[category] }}</h2>
+
 <ol class="gist-list">
-    {% for gist in gists %}
+    {% for gist in categories[category] %}
     <li class="gist-item">
         <span class="meta date-col">{{ gist.published_date }}</span>
         <span class="meta category-col">{{ gist.category }}</span>
@@ -68,5 +81,6 @@
     </li>
     {% endfor %}
 </ol>
+{% endfor %}
 
 {% endblock %}

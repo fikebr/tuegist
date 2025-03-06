@@ -1,7 +1,7 @@
 from config import Config
 import requests
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import os
 from jinja2 import Environment, FileSystemLoader
@@ -42,14 +42,16 @@ class TueGist:
 
 
         self.scan()
+        self.db.backfill_published_date()
         self.build_index()
         self.build_pages()
         self.build_gists()
     
     
     def build_index(self):
-        log.info("Building Index")
-
+        log.info("Building Index Files")
+        
+        # Building index.html
         index_file_path = os.path.join(self.output_folder_path, "index.html")
 
         if os.path.exists(index_file_path):
@@ -63,6 +65,56 @@ class TueGist:
 
         with open(index_file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
+            
+        # Building categories.html & tags.html
+        
+        categories = {}
+        tags = {}
+        category_count = {}
+        tag_count = {}
+        
+        for gist in gists:
+            if gist['category'] not in categories:
+                categories[gist['category']] = []
+                category_count[gist['category']] = 0
+            categories[gist['category']].append(gist)
+            category_count[gist['category']] += 1
+            
+            if gist['tags'] == "":
+                if "no-tag" not in tags:
+                    tags["no-tag"] = []
+                    tag_count["no-tag"] = 0
+                tags["no-tag"].append(gist)
+                tag_count["no-tag"] += 1
+                continue
+            
+            gist_tags = gist['tags'].split(', ')  # Renamed from tags to gist_tags
+            for tag in gist_tags:
+                if tag not in tags:  # Using tags_dict instead of tags
+                    tags[tag] = []
+                    tag_count[tag] = 0
+                tags[tag].append(gist)
+                tag_count[tag] += 1
+            
+                
+        category_list = sorted(category_count.keys(), key=lambda x: category_count[x], reverse=True)
+        tag_list = sorted(tag_count.keys(), key=lambda x: tag_count[x], reverse=True)
+        
+        template = self.jinja_env.get_template("categories.jinja")
+        html_content = template.render(categories=categories, category_list=category_list, category_count=category_count, cfg=cfg)
+        
+        with open(os.path.join(self.output_folder_path, "categories.html"), 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+        template = self.jinja_env.get_template("tags.jinja")
+        html_content = template.render(tags=tags, tag_list=tag_list, tag_count=tag_count, cfg=cfg)
+        
+        with open(os.path.join(self.output_folder_path, "tags.html"), 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+            
+            
+            
             
     def build_pages(self):
         log.info("Building Pages")
@@ -255,7 +307,12 @@ class DB:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            sql = "SELECT id, description, category, tags, summary, create_date, modified_date, published_date FROM gists ORDER BY modified_date DESC"
+
+            sql = """SELECT id, description, category, tags, summary, create_date, modified_date, published_date
+            FROM gists
+            WHERE published_date IS NOT NULL
+            ORDER BY published_date DESC"""
+
             cursor.execute(sql)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
@@ -281,6 +338,38 @@ class DB:
                 log.info(f"Updated published_date to {current_time} for gist {id}")
             
             return id
+
+    def get_most_recent_tuesday(self, date: datetime):
+        """Returns the date of the most recent Tuesday before the given date."""
+        today = date
+        # Calculate days to go back to reach the previous Tuesday
+        # If today is Tuesday (1), we want to go back 7 days
+        # If today is Wednesday (2), we want to go back 1 day
+        # If today is Thursday (3), we want to go back 2 days, etc.
+        days_back = ((today.weekday() - 1) % 7) or 7  # Use 7 if result is 0 (Tuesday)
+        most_recent_tuesday = today - timedelta(days=days_back)
+        return most_recent_tuesday
+
+    def backfill_published_date(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, modified_date FROM gists WHERE published_date IS NULL OR published_date = ''")
+            rows = cursor.fetchall()
+            
+            current_time = self.get_most_recent_tuesday(datetime.now())
+            current_time_str = current_time.strftime('%Y-%m-%d')
+            
+            for row in rows:
+                gist_id = row['id']
+                
+                cursor.execute("UPDATE gists SET published_date = ? WHERE id = ?", (current_time_str, gist_id))
+                conn.commit()
+                
+                current_time = self.get_most_recent_tuesday(current_time)
+                current_time_str = current_time.strftime('%Y-%m-%d')
+
+        
 
 
 
