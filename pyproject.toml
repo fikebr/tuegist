@@ -1,0 +1,7 @@
+[project]
+name = "tuegist.com"
+version = "0.1.0"
+description = "A website to post my public gists"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []

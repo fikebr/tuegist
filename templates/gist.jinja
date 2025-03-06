@@ -1,0 +1,114 @@
+{% extends "base.jinja" %}
+
+{% block title %}TueGist {{ gist.description }}{% endblock %}
+
+{% block style %}
+
+.gist-container {
+    margin-bottom: 20px;
+}
+.file-container {
+    position: relative;
+    background: #272822;
+    color: #f8f8f2;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    margin-top: 5px;
+}
+.file-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+.copy-btn:hover {
+    background: #666;
+}
+
+{% endblock %}
+
+{% block content %}
+
+<h1>GIST VIEWER</h1>
+<h2>{{ gist.description }}</h2>
+<div id="gist-container" class="gist-container">Loading...</div>
+
+{% endblock %} 
+
+
+{% block script %}
+
+async function fetchGist() {
+    const gistId = '{{ gist.id }}';
+    const url = `https://api.github.com/gists/${gistId}`;
+    const gistContainer = document.getElementById('gist-container');
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch Gist');
+        }
+
+        const gistData = await response.json();
+        gistContainer.innerHTML = ""; // Clear previous content
+
+        const files = Object.values(gistData.files);
+        if (files.length === 0) {
+            gistContainer.innerHTML = "<p>No files found in the Gist.</p>";
+            return;
+        }
+
+        files.forEach(file => {
+            const fileBlock = document.createElement('div');
+            fileBlock.classList.add('file-container');
+
+            const fileHeader = document.createElement('div');
+            fileHeader.classList.add('file-header');
+            fileHeader.textContent = file.filename;
+
+            const codeBlock = document.createElement('pre');
+            codeBlock.textContent = file.content;
+
+            const copyButton = document.createElement('button');
+            copyButton.classList.add('copy-btn');
+            copyButton.textContent = '📋';
+            copyButton.onclick = () => copyToClipboard(file.content, copyButton);
+
+            fileBlock.appendChild(fileHeader);
+            fileBlock.appendChild(copyButton);
+            fileBlock.appendChild(codeBlock);
+            gistContainer.appendChild(fileBlock);
+        });
+
+    } catch (error) {
+        gistContainer.innerHTML = `<p>Error: ${error.message}</p>`;
+    }
+}
+
+function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        button.textContent = '✅';
+        setTimeout(() => {
+            button.textContent = '📋';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
+}
+
+fetchGist();
+
+{% endblock %}

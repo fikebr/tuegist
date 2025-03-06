@@ -1,0 +1,52 @@
+{% extends "base.jinja" %}
+
+{% block title %}TueGist News{% endblock %}
+
+{% block style %}
+
+.gist-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+.gist-item {
+    margin-bottom: 8px;
+    font-size: 10pt;
+}
+.title {
+    color: #000;
+    text-decoration: none;
+}
+.domain {
+    color: #828282;
+    font-size: 8pt;
+}
+.meta {
+    color: #828282;
+    font-size: 7pt;
+}
+.meta a {
+    color: #828282;
+    text-decoration: none;
+}
+.score {
+    color: #828282;
+}
+
+{% endblock %}
+
+
+
+{% block content %}
+
+<ol class="gist-list">
+    {% for gist in gists %}
+    <li class="gist-item">
+        <span class="meta">{{ gist.modified_date }}</span> | 
+        <a href="gists/{{ gist.id }}.html" class="title">{{ gist.description }}</a>
+
+    </li>
+    {% endfor %}
+</ol>
+
+{% endblock %}
