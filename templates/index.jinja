@@ -43,7 +43,7 @@
     {% for gist in gists %}
     <li class="gist-item">
         <span class="meta">{{ gist.modified_date }}</span> | 
-        <a href="gists/{{ gist.id }}.html" class="title">{{ gist.description }}</a>
+        <a href="{{ cfg.url_base }}/gists/{{ gist.id }}.html" class="title">{{ gist.description }}</a>
 
     </li>
     {% endfor %}

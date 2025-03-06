@@ -2,7 +2,7 @@
 from options import get_options
 from log_config import setup_logging
 import logging
-from tuegist import Github, TueGist
+from tuegist import TueGist
 
 log = logging.getLogger(__name__)
 setup_logging()

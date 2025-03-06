@@ -1,11 +1,13 @@
-from config import LOGFILE_PATH
+from config import Config
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 
+cfg = Config()
+
 LOG_FORMAT = "%(asctime)s %(levelname)s %(lineno)d - %(message)s"  # %(filename)s
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_FILE = LOGFILE_PATH
+LOG_FILE = cfg.logfile_path
 LOG_FILE_MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 
 

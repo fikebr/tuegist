@@ -1,4 +1,5 @@
-from config import USERNAME, OUTPUT_FOLDER_PATH, DB_FILE_PATH, BASE_DIR
+#from config import USERNAME, OUTPUT_FOLDER_PATH, DB_FILE_PATH, BASE_DIR
+from config import Config
 import requests
 import sqlite3
 from datetime import datetime
@@ -6,15 +7,16 @@ import logging
 import os
 from jinja2 import Environment, FileSystemLoader
 
+cfg = Config()
 log = logging.getLogger(__name__)
 
 class TueGist:
     def __init__(self):
         self.db = DB()
-        self.output_folder_path = OUTPUT_FOLDER_PATH
+        self.output_folder_path = cfg.output_folder_path
         
         # Setup Jinja environment
-        templates_dir = os.path.join(BASE_DIR, "templates")
+        templates_dir = os.path.join(cfg.base_dir, "templates")
         self.jinja_env = Environment(loader=FileSystemLoader(templates_dir))
         
     def scan(self):
@@ -58,7 +60,7 @@ class TueGist:
         gists = self.db.get_gists_all()
 
         template = self.jinja_env.get_template("index.jinja")
-        html_content = template.render(gists=gists)
+        html_content = template.render(gists=gists, cfg=cfg)
 
         with open(index_file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -72,7 +74,7 @@ class TueGist:
             file_path = os.path.join(self.output_folder_path, f"{page}.html")
             
             template = self.jinja_env.get_template(f"{page}.jinja")
-            html_content = template.render()
+            html_content = template.render(cfg=cfg)
 
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
@@ -105,7 +107,7 @@ class TueGist:
         
         # Get template and render
         template = self.jinja_env.get_template("gist.jinja")
-        html_content = template.render(gist=gist)
+        html_content = template.render(gist=gist, cfg=cfg)
         
         # Ensure the output directory exists
         os.makedirs(os.path.dirname(html_file_path), exist_ok=True)
@@ -118,7 +120,7 @@ class TueGist:
 
 class Github:
     def __init__(self):
-        self.username = USERNAME
+        self.username = cfg.username
     
     def query_gists(self) -> list:
         
@@ -152,7 +154,7 @@ class Github:
 class DB:
     def __init__(self):
         """Initialize database connection and ensure tables exist."""
-        self.db_path = self._validate_db_file(DB_FILE_PATH)
+        self.db_path = self._validate_db_file(cfg.db_file_path)
         self.conn = None
         
     def __enter__(self):
