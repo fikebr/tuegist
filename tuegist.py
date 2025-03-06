@@ -1,4 +1,3 @@
-#from config import USERNAME, OUTPUT_FOLDER_PATH, DB_FILE_PATH, BASE_DIR
 from config import Config
 import requests
 import sqlite3
@@ -185,6 +184,36 @@ class DB:
                 
         return db_path
     
+    def parse_description(self, description: str) -> dict:
+        """Parse the description of a gist into a title, category, tags dictionary."""
+        parts = description.split(": ", 1)
+        
+        if len(parts) == 2:
+            category = parts[0]
+            title = parts[1]
+        else:
+            category = ""
+            title = description
+            
+        # Extract tags from end of title
+        tags = []
+        words = title.split()
+        
+        # Work backwards from end to find hashtags
+        while words and words[-1].startswith('#'):
+            tag = words.pop()[1:] # Remove the # prefix
+            tags.append(tag)
+            
+        # Reconstruct title without the tags
+        title = ' '.join(words)
+            
+        return {
+            "category": category,
+            "title": title,
+            "tags": ", ".join(tags) if tags else ""
+        }
+
+
 
     def create_gist(self, gist_data):
         existing_gist = self.get_gist(gist_data['id'])
@@ -193,14 +222,19 @@ class DB:
             log.info(f"Gist {gist_data['id']} has not been modified since {existing_gist['modified_date']}")
             return
 
+        parsed_description = self.parse_description(gist_data['description'])
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO gists 
-                (id, description, create_date, modified_date, published_date)
-                VALUES (?, ?, ?, ?, ?)
+                (id, title, category, tags, summary, create_date, modified_date, published_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 gist_data['id'],
+                parsed_description['title'],
+                parsed_description['category'],
+                parsed_description['tags'],
                 gist_data['description'],
                 gist_data['created_at'],
                 gist_data['updated_at'],
