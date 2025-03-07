@@ -44,6 +44,8 @@
 
 <h1>GIST VIEWER</h1>
 <h2>{{ gist.description }}</h2>
+<p>Published: {{ gist.published_date }}</p>
+<p>Github Gist:<a href="https://gist.github.com/{{ cfg.username }}/{{ gist.id }}" target="_blank">https://gist.github.com/{{ cfg.username }}/{{ gist.id }}</a></p>
 <div id="gist-container" class="gist-container">Loading...</div>
 
 {% endblock %} 

@@ -1,5 +1,13 @@
 import argparse
 
+# https://docs.python.org/3/library/argparse.html
+
+# USAGE
+# from options import get_options
+# args = get_options()
+# print(args.rebuild)
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -28,13 +36,13 @@ def parse_args():
     parser.add_argument(
         '--index',
         action='store_true',
-        help='Rebuild the index.html and rss.xml files'
+        help='Rebuilds the index pages (index.html, categories.html, tags.html and rss.xml)'
     )
 
     parser.add_argument(
         '--scan',
         action='store_true',
-        help='Scan gists and update the DB without rebuilding HTML files'
+        help='Scan the Gsts API and update the DB without rebuilding HTML files'
     )
 
     parser.add_argument(

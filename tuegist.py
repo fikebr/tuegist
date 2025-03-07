@@ -5,9 +5,38 @@ from datetime import datetime, timedelta
 import logging
 import os
 from jinja2 import Environment, FileSystemLoader
+import subprocess
 
 cfg = Config()
 log = logging.getLogger(__name__)
+
+
+def get_the_tuesday_before_date(self, date: datetime) -> datetime:
+    """Returns the date of the most recent Tuesday before the given date."""
+    days_back = ((date.weekday() - 1) % 7) or 7  # Use 7 if result is 0 (Tuesday)
+    most_recent_tuesday = date - timedelta(days=days_back)
+    return most_recent_tuesday
+
+
+def get_the_tuesday_after_date(date: datetime) -> datetime:
+    """Returns the date of the most recent Tuesday after the given date."""
+    days_back = ((date.weekday() + 1) % 7) or 7  # Use 7 if result is 0 (Tuesday)
+    most_recent_tuesday = date + timedelta(days=days_back)
+    return most_recent_tuesday
+
+def is_date_a_tuesday(date: datetime) -> bool:
+    """Returns True if the given date is a Tuesday, False otherwise."""
+    return date.weekday() == 1
+
+def datestring_to_datetime(datestring: str) -> datetime:
+    """Converts a date string to a datetime object."""
+    return datetime.strptime(datestring, '%Y-%m-%d')
+
+def datetime_to_datestring(datetime: datetime) -> str:
+    """Converts a datetime object to a date string."""
+    return datetime.strftime('%Y-%m-%d')
+
+
 
 class TueGist:
     def __init__(self):
@@ -17,6 +46,59 @@ class TueGist:
         # Setup Jinja environment
         templates_dir = os.path.join(cfg.base_dir, "templates")
         self.jinja_env = Environment(loader=FileSystemLoader(templates_dir))
+        
+    def tues(self):
+        log.info("Performing Weekly Post Actions")
+
+        self.scan()
+        
+        # Get the most recent Tuesday
+        most_recent_published_date = self.db.most_recent_published_date()
+        most_recent_published_date = datestring_to_datetime(most_recent_published_date)
+
+        next_tuesday = get_the_tuesday_after_date(most_recent_published_date)
+        
+        tuesdays = []
+        
+        while next_tuesday <= datetime.now():
+            tuesdays.append(next_tuesday)
+            next_tuesday = get_the_tuesday_after_date(next_tuesday)
+            
+        gists_published = 0
+        for tuesday in tuesdays:
+            next_gist_id = self.db.get_next_post_id()
+            
+            if next_gist_id:
+                self.db.set_published_date(next_gist_id, datetime_to_datestring(tuesday))
+                gists_published += 1
+                
+        if gists_published > 0:
+            self.build_gists()
+            self.build_index()
+            commit_message = f"Published {gists_published} new gists on {datetime_to_datestring(datetime.now())}"
+            self.git_commit_output_folder(commit_message)
+            log.info(commit_message)
+        
+    def git_commit_output_folder(self, commit_message: str):
+        log.info("Committing Output Folder")
+        
+
+        # Change to the repository directory
+        original_dir = os.getcwd()
+        os.chdir(cfg.output_folder_path)
+        
+        try:
+            # Git commit
+            subprocess.run(['git', 'add', '.'], check=True)
+            subprocess.run(['git', 'commit', '-m', f'"{commit_message}"'], check=True)
+            
+            # Git push
+            subprocess.run(['git', 'push'], check=True)
+        
+        finally:
+            # Change back to original directory
+            os.chdir(original_dir)
+        
         
     def scan(self):
         log.info("Scanning Gists")
@@ -53,10 +135,6 @@ class TueGist:
         
         # Building index.html
         index_file_path = os.path.join(self.output_folder_path, "index.html")
-
-        if os.path.exists(index_file_path):
-            log.info("Index already exists")
-            return
         
         gists = self.db.get_gists_all()
 
@@ -339,16 +417,11 @@ class DB:
             
             return id
 
-    def get_most_recent_tuesday(self, date: datetime):
-        """Returns the date of the most recent Tuesday before the given date."""
-        today = date
-        # Calculate days to go back to reach the previous Tuesday
-        # If today is Tuesday (1), we want to go back 7 days
-        # If today is Wednesday (2), we want to go back 1 day
-        # If today is Thursday (3), we want to go back 2 days, etc.
-        days_back = ((today.weekday() - 1) % 7) or 7  # Use 7 if result is 0 (Tuesday)
-        most_recent_tuesday = today - timedelta(days=days_back)
-        return most_recent_tuesday
+    def set_published_date(self, gist_id: str, published_date: str):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE gists SET published_date = ? WHERE id = ?", (published_date, gist_id))
+            conn.commit()
 
     def backfill_published_date(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -357,7 +430,7 @@ class DB:
             cursor.execute("SELECT id, modified_date FROM gists WHERE published_date IS NULL OR published_date = ''")
             rows = cursor.fetchall()
             
-            current_time = self.get_most_recent_tuesday(datetime.now())
+            current_time = get_the_tuesday_before_date(datetime.now())
             current_time_str = current_time.strftime('%Y-%m-%d')
             
             for row in rows:
@@ -366,9 +439,18 @@ class DB:
                 cursor.execute("UPDATE gists SET published_date = ? WHERE id = ?", (current_time_str, gist_id))
                 conn.commit()
                 
-                current_time = self.get_most_recent_tuesday(current_time)
+                current_time = get_the_tuesday_before_date(current_time)
                 current_time_str = current_time.strftime('%Y-%m-%d')
 
+    def most_recent_published_date(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT MAX(published_date) as published_date FROM gists")
+            row = cursor.fetchone()
+            if not row or row['published_date'] is None:
+                return ""
+            return row['published_date']
         
 
 

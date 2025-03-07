@@ -25,6 +25,7 @@ class Config:
         self.db_file_path = os.path.join(self.base_dir, self.db_file)
         self.url_base = URL_BASE
         self.github_repo = GITHUB_REPO
+
     def _get_output_folder_path(self):
         path = os.path.join(BASE_DIR,  "..", OUTPUT_FOLDER)
         os.makedirs(path, exist_ok=True)

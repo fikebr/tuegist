@@ -31,6 +31,10 @@ def main():
     elif args.scan:
         # Scan gists
         tuegist.scan()
+        
+    elif args.tues:
+        # Perform weekly post actions
+        tuegist.tues()
 
 if __name__ == "__main__":
     main()
