@@ -101,12 +101,12 @@ class TueGist:
         
         
     def scan(self):
-        log.info("Scanning Gists")
+        log.info("Scanning Github for Gists")
 
         gh = Github()
         gists = gh.query_gists()
         
-        log.info(f"Found {len(gists)} gists")
+        # log.info(f"Found {len(gists)} gists")
 
     def rebuild(self):
         log.info("Rebuilding Everything")
@@ -267,7 +267,14 @@ class Github:
             gist['created_at'] = datetime.strptime(gist['created_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d %H:%M')
             gist['updated_at'] = datetime.strptime(gist['updated_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d %H:%M')
 
-            db.create_gist(gist)
+            created = 0
+            updated = 0
+
+            result = db.create_gist(gist)
+            if result == "created":
+                created += 1
+            elif result == "updated":
+                updated += 1
 
             gists.append({
                 'url': gist['url'],
@@ -277,6 +284,7 @@ class Github:
                 'description': gist['description']
             })
             
+        log.info(f"{len(gists)} gists found, {created} created, {updated} updated")
         return gists
 
 
@@ -349,9 +357,11 @@ class DB:
         existing_gist = self.get_gist(gist_data['id'])
         
         if existing_gist and existing_gist['modified_date'] >= gist_data['updated_at']:
-            log.info(f"Gist {gist_data['id']} has not been modified since {existing_gist['modified_date']}")
-            return
+            # log.info(f"Gist {gist_data['id']} has not been modified since {existing_gist['modified_date']}")
+            return(None)
 
+        result = "updated" if existing_gist else "created"
+        
         parsed_description = self.parse_description(gist_data['description'])
 
         with sqlite3.connect(self.db_path) as conn:
@@ -372,6 +382,8 @@ class DB:
             ))
             conn.commit()
             log.info(f"Gist {gist_data['id']} saved to database")
+            
+            return(result)
 
     def get_gist(self, gist_id):
         with sqlite3.connect(self.db_path) as conn:
